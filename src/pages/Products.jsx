@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import {
@@ -67,6 +68,38 @@ const Products = () => {
     fetchData();
   }, []);
 
+  // Get category name safely
+  const getCategoryName = (product) => {
+    const productCategory = product.category;
+
+    if (
+      productCategory &&
+      typeof productCategory === "object"
+    ) {
+      return (
+        productCategory.name ||
+        productCategory.categoryName ||
+        ""
+      );
+    }
+
+    // Match category ID to category name for older products
+    const matchedCategory = categories.find(
+      (category) =>
+        String(category._id) === String(productCategory)
+    );
+
+    if (matchedCategory) {
+      return (
+        matchedCategory.name ||
+        matchedCategory.categoryName ||
+        ""
+      );
+    }
+
+    return productCategory || "";
+  };
+
   // Open empty form for adding a product
   const openAddForm = () => {
     setEditingId(null);
@@ -133,10 +166,7 @@ const Products = () => {
       productName: product.productName || product.name || "",
       description: product.description || "",
       price: product.price ?? "",
-      category:
-        typeof product.category === "object"
-          ? product.category?._id || product.category?.name || ""
-          : product.category || "",
+      category: getCategoryName(product),
       images:
         Array.isArray(product.images) && product.images.length > 0
           ? product.images.map((image) =>
@@ -159,17 +189,25 @@ const Products = () => {
       return;
     }
 
-    if (form.price === "" || Number(form.price) < 0) {
+    if (
+      form.price === "" ||
+      !Number.isFinite(Number(form.price)) ||
+      Number(form.price) < 0
+    ) {
       toast.error("Enter a valid product price");
       return;
     }
 
-    if (Number(form.stock) < 0) {
-      toast.error("Stock cannot be negative");
+    if (
+      form.stock === "" ||
+      !Number.isInteger(Number(form.stock)) ||
+      Number(form.stock) < 0
+    ) {
+      toast.error("Stock must be a non-negative whole number");
       return;
     }
 
-    if (!form.category) {
+    if (!form.category.trim()) {
       toast.error("Please select a category");
       return;
     }
@@ -177,9 +215,14 @@ const Products = () => {
     const payload = {
       ...form,
       productName: form.productName.trim(),
+      description: form.description.trim(),
+      // Save the category NAME, not the category ID
+      category: form.category.trim(),
       price: Number(form.price),
       stock: Number(form.stock),
-      images: form.images.map((image) => image.trim()).filter(Boolean),
+      images: form.images
+        .map((image) => image.trim())
+        .filter(Boolean),
     };
 
     try {
@@ -227,20 +270,6 @@ const Products = () => {
     }
   };
 
-  // Product category display
-  const getCategoryName = (product) => {
-    if (typeof product.category === "object") {
-      return product.category?.name || product.category?.categoryName || "—";
-    }
-
-    const category = categories.find(
-      (item) =>
-        item._id === product.category || item.name === product.category
-    );
-
-    return category?.name || category?.categoryName || product.category || "—";
-  };
-
   // Product image display
   const getProductImage = (product) => {
     const firstImage = product.images?.[0];
@@ -249,6 +278,7 @@ const Products = () => {
     return firstImage?.url || "";
   };
 
+  // Filter products
   const filteredProducts = products.filter((product) => {
     const term = search.toLowerCase();
 
@@ -307,8 +337,8 @@ const Products = () => {
                 All Products
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                {products.length} product{products.length !== 1 ? "s" : ""}{" "}
-                available
+                {products.length} product
+                {products.length !== 1 ? "s" : ""} available
               </p>
             </div>
 
@@ -330,7 +360,9 @@ const Products = () => {
                 disabled={loading}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
-                <FiRefreshCw className={loading ? "animate-spin" : ""} />
+                <FiRefreshCw
+                  className={loading ? "animate-spin" : ""}
+                />
                 Refresh
               </button>
             </div>
@@ -349,7 +381,9 @@ const Products = () => {
             <div className="px-4 py-16 text-center">
               <FiPackage className="mx-auto text-4xl text-slate-300" />
               <h3 className="mt-3 font-semibold text-slate-800">
-                {search ? "No matching products found" : "No products yet"}
+                {search
+                  ? "No matching products found"
+                  : "No products yet"}
               </h3>
               <p className="mt-1 text-sm text-slate-500">
                 {search
@@ -409,7 +443,9 @@ const Products = () => {
 
                             <div className="min-w-0">
                               <p className="max-w-xs truncate font-semibold text-slate-900">
-                                {product.productName || product.name || "Unnamed product"}
+                                {product.productName ||
+                                  product.name ||
+                                  "Unnamed product"}
                               </p>
                               <p className="mt-1 text-xs text-slate-400">
                                 ID: {String(product._id).slice(-8)}
@@ -419,11 +455,14 @@ const Products = () => {
                         </td>
 
                         <td className="px-5 py-4 text-slate-600">
-                          {getCategoryName(product)}
+                          {getCategoryName(product) || "—"}
                         </td>
 
                         <td className="px-5 py-4 font-semibold text-slate-900">
-                          ₹{Number(product.price || 0).toLocaleString("en-IN")}
+                          ₹
+                          {Number(product.price || 0).toLocaleString(
+                            "en-IN"
+                          )}
                         </td>
 
                         <td className="px-5 py-4">
@@ -446,7 +485,9 @@ const Products = () => {
                                 : "bg-slate-100 text-slate-600"
                             }`}
                           >
-                            {product.isAvailable ? "Available" : "Unavailable"}
+                            {product.isAvailable
+                              ? "Available"
+                              : "Unavailable"}
                           </span>
                         </td>
 
@@ -554,14 +595,22 @@ const Products = () => {
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-indigo-500"
                   >
                     <option value="">Select category</option>
-                    {categories.map((category) => (
-                      <option
-                        key={category._id || category.name}
-                        value={category._id || category.name}
-                      >
-                        {category.name || category.categoryName}
-                      </option>
-                    ))}
+
+                    {categories.map((category) => {
+                      const categoryName =
+                        category.name ||
+                        category.categoryName ||
+                        "";
+
+                      return (
+                        <option
+                          key={category._id || categoryName}
+                          value={categoryName}
+                        >
+                          {categoryName}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -628,7 +677,10 @@ const Products = () => {
                           type="url"
                           value={image}
                           onChange={(event) =>
-                            handleImageChange(index, event.target.value)
+                            handleImageChange(
+                              index,
+                              event.target.value
+                            )
                           }
                           placeholder="https://example.com/product-image.jpg"
                           className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-indigo-500"
@@ -704,7 +756,9 @@ const Products = () => {
                   ) : (
                     <>
                       <FiPlus />
-                      {editingId ? "Update Product" : "Create Product"}
+                      {editingId
+                        ? "Update Product"
+                        : "Create Product"}
                     </>
                   )}
                 </button>
