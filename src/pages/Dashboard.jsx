@@ -322,7 +322,7 @@ export default function Dashboard() {
       {/* Dashboard header */}
       <header
         data-aos="fade-down"
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-5 text-white shadow-xl shadow-teal-900/20 sm:p-8"
+          className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-5 text-white shadow-xl shadow-indigo-900/20 sm:p-8"
       >
         <div className="db-float pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
         <div className="db-float-slow pointer-events-none absolute -bottom-12 left-1/3 h-44 w-44 rounded-full bg-emerald-300/20 blur-3xl" />
