@@ -711,7 +711,7 @@ export default function Orders() {
                         className="transition hover:bg-indigo-50/40"
                       >
                         <td className="break-words px-2 py-3 font-semibold text-gray-800 xl:px-3">
-                          #{order._id.slice(-8).toUpperCase()}
+                          #{order.orderNumber}
                         </td>
 
                         <td className="min-w-0 px-2 py-3 xl:px-3">
