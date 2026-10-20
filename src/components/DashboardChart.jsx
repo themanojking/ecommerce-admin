@@ -1,3 +1,4 @@
+
 // src/components/DashboardChart.jsx
 
 import { useEffect, useMemo, useState } from "react";
@@ -38,7 +39,9 @@ import api from "../services/api";
 /* ------------------------------------------------------------------ */
 
 const IST = "Asia/Kolkata";
+
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 const DAY_FULL = [
   "Sunday",
   "Monday",
@@ -48,19 +51,10 @@ const DAY_FULL = [
   "Friday",
   "Saturday",
 ];
+
 const MONTH_SHORT = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -74,13 +68,14 @@ const istFormatter = new Intl.DateTimeFormat("en-GB", {
   hourCycle: "h23",
 });
 
-// Calendar parts of any moment, as seen in India
 const getISTParts = (date) => {
   const parts = {};
+
   istFormatter.formatToParts(date).forEach(({ type, value }) => {
     if (type !== "literal") parts[type] = Number(value);
   });
-  return parts; // { year, month, day, hour }
+
+  return parts;
 };
 
 const dayKey = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
@@ -92,13 +87,10 @@ const formatHour = (h) => {
   return `${h - 12} PM`;
 };
 
-/**
- * Builds the empty timeline for the selected period, based on the
- * current date and time in India.
- *  - daily   : every hour of today (12 AM until the current hour)
- *  - weekly  : the last 7 days, labelled Sun, Mon, Tue...
- *  - monthly : the last 30 days, labelled like "17 Oct"
- */
+/* ------------------------------------------------------------------ */
+/* Timeline                                                            */
+/* ------------------------------------------------------------------ */
+
 const buildTimeline = (period, now) => {
   const p = getISTParts(now);
   const today = dayKey(p.year, p.month, p.day);
@@ -118,6 +110,7 @@ const buildTimeline = (period, now) => {
 
   return Array.from({ length: count }, (_, i) => {
     const dt = new Date(base - (count - 1 - i) * 86400000);
+
     const y = dt.getUTCFullYear();
     const m = dt.getUTCMonth() + 1;
     const d = dt.getUTCDate();
@@ -139,34 +132,45 @@ const buildTimeline = (period, now) => {
   });
 };
 
-// Try to read a real date out of a row returned by the API
 const getRowDate = (row) => {
-  const candidates = [row?.date, row?.createdAt, row?.day, row?._id, row?.label];
+  const candidates = [
+    row?.date,
+    row?.createdAt,
+    row?.day,
+    row?._id,
+    row?.label,
+  ];
 
   for (const value of candidates) {
     if (value == null) continue;
+
     if (typeof value === "object" && value.date) {
       const nested = new Date(value.date);
+
       if (!Number.isNaN(nested.getTime())) return nested;
       continue;
     }
+
     if (typeof value !== "string" && typeof value !== "number") continue;
-    // Plain "YYYY-MM-DD" is treated as an India calendar day
+
     const text = String(value);
+
     const date = /^\d{4}-\d{2}-\d{2}$/.test(text)
       ? new Date(`${text}T00:00:00+05:30`)
       : new Date(value);
+
     if (!Number.isNaN(date.getTime()) && /\d{4}|\d{10,}/.test(text)) {
       return date;
     }
   }
+
   return null;
 };
 
-// Put the API rows into the India-time timeline
 const mergeIntoTimeline = (rows, period, now) => {
   const timeline = buildTimeline(period, now);
   const lookup = new Map(timeline.map((slot) => [slot.key, slot]));
+
   let matched = 0;
 
   rows.forEach((row) => {
@@ -174,6 +178,7 @@ const mergeIntoTimeline = (rows, period, now) => {
     if (!date) return;
 
     const p = getISTParts(date);
+
     const key =
       period === "daily"
         ? `${dayKey(p.year, p.month, p.day)}-${pad(p.hour)}`
@@ -184,10 +189,10 @@ const mergeIntoTimeline = (rows, period, now) => {
 
     slot.orders += Number(row.orders) || 0;
     slot.revenue += Number(row.revenue) || 0;
+
     matched += 1;
   });
 
-  // Rows without readable dates: show them exactly as the API sent them
   if (rows.length > 0 && matched === 0) {
     return rows.map((row, index) => ({
       key: `raw-${index}`,
@@ -248,21 +253,22 @@ const CustomTooltip = ({ active, payload, showRevenue }) => {
   const point = payload[0].payload;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur">
-      <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-        <FiCalendar size={13} className="text-slate-400" />
+    <div className="rounded-lg border border-slate-200 bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+        <FiCalendar size={12} className="text-slate-400" />
         {point.fullLabel || point.label}
       </p>
 
-      <p className="flex items-center gap-2 text-sm text-indigo-600">
-        <FiShoppingCart size={13} />
+      <p className="flex items-center gap-2 text-xs text-indigo-600">
+        <FiShoppingCart size={12} />
         Orders: <span className="font-bold">{point.orders}</span>
       </p>
 
       {showRevenue && (
-        <p className="mt-1 flex items-center gap-2 text-sm text-emerald-600">
-          <FiDollarSign size={13} />
-          Revenue: <span className="font-bold">{currency(point.revenue)}</span>
+        <p className="mt-1 flex items-center gap-2 text-xs text-emerald-600">
+          <FiDollarSign size={12} />
+          Revenue:{" "}
+          <span className="font-bold">{currency(point.revenue)}</span>
         </p>
       )}
     </div>
@@ -270,7 +276,7 @@ const CustomTooltip = ({ active, payload, showRevenue }) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* Component                                                           */
+/* Dashboard chart                                                     */
 /* ------------------------------------------------------------------ */
 
 const DashboardChart = () => {
@@ -292,7 +298,6 @@ const DashboardChart = () => {
     });
   }, []);
 
-  // Keep the India time (and the timeline) up to date every minute
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
@@ -306,8 +311,6 @@ const DashboardChart = () => {
         setLoading(true);
         setError("");
 
-        // This endpoint must be implemented in your backend.
-        // The timezone is sent so the server can group by India time too.
         const response = await api.get(
           `/admin/dashboard/chart?period=${period}&timezone=${encodeURIComponent(
             IST
@@ -322,7 +325,8 @@ const DashboardChart = () => {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err.response?.data?.message || "Unable to load sales performance."
+            err.response?.data?.message ||
+              "Unable to load sales performance."
           );
         }
       } finally {
@@ -339,13 +343,13 @@ const DashboardChart = () => {
 
   useEffect(() => {
     if (!loading) {
-      const t = setTimeout(() => AOS.refreshHard(), 100);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => AOS.refreshHard(), 100);
+      return () => clearTimeout(timer);
     }
   }, [loading]);
 
-  // Timeline follows India time; re-built when the hour/day changes
   const hourStamp = Math.floor(now.getTime() / 3600000);
+
   const chartData = useMemo(
     () => mergeIntoTimeline(rawRows, period, now),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -353,10 +357,19 @@ const DashboardChart = () => {
   );
 
   const summary = useMemo(() => {
-    const totalOrders = chartData.reduce((sum, row) => sum + row.orders, 0);
-    const totalRevenue = chartData.reduce((sum, row) => sum + row.revenue, 0);
+    const totalOrders = chartData.reduce(
+      (sum, row) => sum + row.orders,
+      0
+    );
+
+    const totalRevenue = chartData.reduce(
+      (sum, row) => sum + row.revenue,
+      0
+    );
+
     const peak = chartData.reduce(
-      (best, row) => (row.orders > (best?.orders ?? -1) ? row : best),
+      (best, row) =>
+        row.orders > (best?.orders ?? -1) ? row : best,
       null
     );
 
@@ -367,20 +380,26 @@ const DashboardChart = () => {
     };
   }, [chartData]);
 
-  const hasData = chartData.some((row) => row.orders > 0 || row.revenue > 0);
+  const hasData = chartData.some(
+    (row) => row.orders > 0 || row.revenue > 0
+  );
 
   const chartProps = {
     data: chartData,
-    margin: { top: 8, right: 12, left: 0, bottom: 4 },
+    margin: { top: 5, right: 8, left: 0, bottom: 2 },
   };
 
   const renderAxes = () => (
     <>
-      <CartesianGrid stroke="#eef2f7" strokeDasharray="4 4" vertical={false} />
+      <CartesianGrid
+        stroke="#eef2f7"
+        strokeDasharray="4 4"
+        vertical={false}
+      />
 
       <XAxis
         dataKey="label"
-        tick={{ fontSize: 11, fill: "#64748b" }}
+        tick={{ fontSize: 10, fill: "#64748b" }}
         axisLine={{ stroke: "#e5e7eb" }}
         tickLine={false}
         interval={period === "weekly" ? 0 : "preserveStartEnd"}
@@ -391,15 +410,16 @@ const DashboardChart = () => {
         yAxisId="orders"
         orientation="left"
         allowDecimals={false}
-        tick={{ fontSize: 10, fill: "#525252" }}
+        tick={{ fontSize: 9, fill: "#525252" }}
         axisLine={false}
         tickLine={false}
+        width={35}
         label={{
           value: "Orders",
           angle: -90,
           position: "insideLeft",
           fill: "#64748b",
-          fontSize: 11,
+          fontSize: 10,
         }}
       />
 
@@ -407,10 +427,11 @@ const DashboardChart = () => {
         <YAxis
           yAxisId="revenue"
           orientation="right"
+          width={48}
           tickFormatter={(value) =>
             value === 0 ? "₹0" : `₹${value.toLocaleString("en-IN")}`
           }
-          tick={{ fontSize: 10, fill: "#525252" }}
+          tick={{ fontSize: 9, fill: "#525252" }}
           axisLine={false}
           tickLine={false}
           label={{
@@ -418,7 +439,7 @@ const DashboardChart = () => {
             angle: 90,
             position: "insideRight",
             fill: "#64748b",
-            fontSize: 11,
+            fontSize: 10,
           }}
         />
       )}
@@ -433,9 +454,9 @@ const DashboardChart = () => {
         align="center"
         iconType="circle"
         wrapperStyle={{
-          fontSize: "12px",
+          fontSize: "11px",
           color: "#64748b",
-          paddingBottom: "12px",
+          paddingBottom: "6px",
         }}
       />
     </>
@@ -472,24 +493,29 @@ const DashboardChart = () => {
           0% { transform: scale(1); opacity: 0.6; }
           100% { transform: scale(2.4); opacity: 0; }
         }
-        .dc-ping { animation: dcPing 1.8s ease-out infinite; }
+
+        .dc-ping {
+          animation: dcPing 1.8s ease-out infinite;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .dc-ping { animation: none; }
         }
       `}</style>
 
       {/* Chart header */}
-      <div className="flex flex-col gap-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md">
-            <FiBarChart2 size={21} />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm">
+            <FiBarChart2 size={18} />
           </div>
 
           <div>
-            <h2 className="text-base font-bold text-slate-900">
+            <h2 className="text-sm font-bold text-slate-900 sm:text-base">
               Sales Performance
             </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+
+            <p className="mt-0.5 text-[11px] text-slate-500">
               {periodHint[period]}
             </p>
           </div>
@@ -500,14 +526,15 @@ const DashboardChart = () => {
           data-aos-delay="100"
           className="flex flex-wrap items-center gap-2"
         >
-          {/* Live India time */}
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-medium text-emerald-700">
             <span className="relative flex h-2 w-2">
               <span className="dc-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            <FiClock size={13} />
+
+            <FiClock size={12} />
             {clockFormatter.format(now)} IST
+
             <span className="hidden text-emerald-600/70 sm:inline">
               · {dateFormatter.format(now)}
             </span>
@@ -519,22 +546,22 @@ const DashboardChart = () => {
       <div
         data-aos="fade-up"
         data-aos-delay="100"
-        className="flex flex-wrap items-center gap-2 px-5 pt-5 sm:px-6"
+        className="flex flex-wrap items-center gap-2 px-4 pt-4 sm:px-5"
       >
-        <div className="flex items-center rounded-xl bg-slate-100 p-1">
+        <div className="flex items-center rounded-lg bg-slate-100 p-1">
           {periods.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
               type="button"
               onClick={() => setPeriod(value)}
               aria-pressed={period === value}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition duration-300 sm:text-sm ${
+              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition duration-200 sm:gap-1.5 sm:px-3 ${
                 period === value
                   ? "bg-white text-indigo-700 shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <Icon size={14} />
+              <Icon size={13} />
               {label}
             </button>
           ))}
@@ -543,48 +570,53 @@ const DashboardChart = () => {
         <button
           type="button"
           onClick={() =>
-            setChartType((current) => (current === "line" ? "bar" : "line"))
+            setChartType((current) =>
+              current === "line" ? "bar" : "line"
+            )
           }
-          className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200 active:scale-95 sm:text-sm"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-200 active:scale-95 sm:px-3"
         >
           {chartType === "line" ? (
-            <FiBarChart2 size={15} />
+            <FiBarChart2 size={14} />
           ) : (
-            <FiTrendingUp size={15} />
+            <FiTrendingUp size={14} />
           )}
+
           {chartType === "line" ? "Bar Chart" : "Line Chart"}
         </button>
 
         <button
           type="button"
           onClick={() => setShowRevenue((current) => !current)}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200 active:scale-95 sm:text-sm"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-200 active:scale-95 sm:px-3"
         >
-          {showRevenue ? <FiEyeOff size={15} /> : <FiEye size={15} />}
+          {showRevenue ? <FiEyeOff size={14} /> : <FiEye size={14} />}
           {showRevenue ? "Hide Revenue" : "Show Revenue"}
         </button>
       </div>
 
-      {/* Summary tiles */}
+      {/* Summary cards */}
       {!loading && !error && (
-        <div className="grid grid-cols-1 gap-3 px-5 pt-5 sm:grid-cols-3 sm:px-6">
+        <div className="grid grid-cols-1 gap-2.5 px-4 pt-4 sm:grid-cols-3 sm:px-5">
           {summaryCards.map(({ icon: Icon, label, value, tint }, index) => (
             <div
               key={label}
               data-aos="zoom-in"
               data-aos-delay={index * 100}
-              className="group flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3.5 transition hover:-translate-y-0.5 hover:shadow-md"
+              className="group flex items-center gap-2.5 rounded-lg border border-slate-100 bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-sm"
             >
               <span
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 ${tint}`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tint}`}
               >
-                <Icon size={18} />
+                <Icon size={16} />
               </span>
+
               <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                   {label}
                 </p>
-                <p className="truncate text-base font-bold text-slate-800">
+
+                <p className="truncate text-sm font-bold text-slate-800">
                   {value}
                 </p>
               </div>
@@ -593,13 +625,14 @@ const DashboardChart = () => {
         </div>
       )}
 
-      {/* Chart body */}
-      <div className="px-3 pb-5 pt-5 sm:px-5 sm:pt-6">
+      {/* Medium-sized chart body */}
+      <div className="px-2 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4">
         {loading ? (
-          <div className="flex h-[320px] items-center justify-center sm:h-[400px]">
+          <div className="flex h-[260px] items-center justify-center sm:h-[300px]">
             <div className="text-center">
-              <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
-              <p className="mt-3 text-sm text-slate-500">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+
+              <p className="mt-3 text-xs text-slate-500">
                 Loading sales performance...
               </p>
             </div>
@@ -607,22 +640,27 @@ const DashboardChart = () => {
         ) : error ? (
           <div
             data-aos="zoom-in"
-            className="flex h-[320px] flex-col items-center justify-center px-4 text-center sm:h-[400px]"
+            className="flex h-[260px] flex-col items-center justify-center px-4 text-center sm:h-[300px]"
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500">
-              <FiAlertCircle size={26} />
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+              <FiAlertCircle size={23} />
             </span>
-            <p className="mt-4 text-sm font-medium text-red-600">{error}</p>
-            <p className="mt-2 text-xs text-slate-500">
+
+            <p className="mt-3 text-sm font-medium text-red-600">
+              {error}
+            </p>
+
+            <p className="mt-1.5 text-xs text-slate-500">
               Check that the dashboard chart API endpoint is configured.
             </p>
+
             <button
               type="button"
               onClick={() => setReloadKey((key) => key + 1)}
-              className="group mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm text-white transition hover:bg-indigo-700"
+              className="group mt-3 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs text-white transition hover:bg-indigo-700"
             >
               <FiRefreshCw
-                size={14}
+                size={13}
                 className="transition-transform duration-500 group-hover:rotate-180"
               />
               Retry
@@ -631,14 +669,16 @@ const DashboardChart = () => {
         ) : !hasData ? (
           <div
             data-aos="zoom-in"
-            className="flex h-[320px] flex-col items-center justify-center text-center sm:h-[400px]"
+            className="flex h-[260px] flex-col items-center justify-center text-center sm:h-[300px]"
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-              <FiInbox size={26} />
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+              <FiInbox size={23} />
             </span>
-            <p className="mt-4 text-sm font-medium text-slate-600">
+
+            <p className="mt-3 text-sm font-medium text-slate-600">
               No sales data available for this period.
             </p>
+
             <p className="mt-1 text-xs text-slate-400">
               New orders will appear here automatically.
             </p>
@@ -647,19 +687,48 @@ const DashboardChart = () => {
           <div
             key={`${period}-${chartType}`}
             data-aos="fade-up"
-            className="h-[320px] w-full sm:h-[400px]"
+            className="h-[260px] w-full sm:h-[300px]"
           >
             <ResponsiveContainer width="100%" height="100%">
               {chartType === "line" ? (
                 <ComposedChart {...chartProps}>
                   <defs>
-                    <linearGradient id="dcOrders" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.02} />
+                    <linearGradient
+                      id="dcOrders"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="#4f46e5"
+                        stopOpacity={0.35}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="#4f46e5"
+                        stopOpacity={0.02}
+                      />
                     </linearGradient>
-                    <linearGradient id="dcRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+
+                    <linearGradient
+                      id="dcRevenue"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="#10b981"
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="#10b981"
+                        stopOpacity={0.02}
+                      />
                     </linearGradient>
                   </defs>
 
@@ -695,14 +764,14 @@ const DashboardChart = () => {
                     dataKey="orders"
                     name="Orders"
                     stroke="#5145ff"
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     dot={{
-                      r: 3.5,
+                      r: 3,
                       fill: "#ffffff",
                       stroke: "#5145ff",
                       strokeWidth: 2,
                     }}
-                    activeDot={{ r: 6 }}
+                    activeDot={{ r: 5 }}
                     animationDuration={900}
                   />
 
@@ -713,14 +782,14 @@ const DashboardChart = () => {
                       dataKey="revenue"
                       name="Revenue"
                       stroke="#00c389"
-                      strokeWidth={2.5}
+                      strokeWidth={2}
                       dot={{
-                        r: 3.5,
+                        r: 3,
                         fill: "#ffffff",
                         stroke: "#00c389",
                         strokeWidth: 2,
                       }}
-                      activeDot={{ r: 6 }}
+                      activeDot={{ r: 5 }}
                       animationDuration={900}
                     />
                   )}
@@ -734,8 +803,8 @@ const DashboardChart = () => {
                     dataKey="orders"
                     name="Orders"
                     fill="#5145ff"
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={period === "weekly" ? 36 : 22}
+                    radius={[5, 5, 0, 0]}
+                    maxBarSize={period === "weekly" ? 30 : 20}
                     animationDuration={900}
                   />
 
@@ -745,8 +814,8 @@ const DashboardChart = () => {
                       dataKey="revenue"
                       name="Revenue"
                       fill="#00c389"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={period === "weekly" ? 36 : 22}
+                      radius={[5, 5, 0, 0]}
+                      maxBarSize={period === "weekly" ? 30 : 20}
                       animationDuration={900}
                     />
                   )}

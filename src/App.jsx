@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -20,11 +20,20 @@ import Sidebar from "./components/Sidebar";
 import { Toaster } from "react-hot-toast";
 
 const AdminLayout = () => {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Sidebar />
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+      />
 
-      <main className="min-h-screen lg:ml-64">
+      <main
+        className={`min-h-screen transition-all duration-300 ease-in-out ${
+          collapsed ? "lg:ml-24" : "lg:ml-64"
+        }`}
+      >
         <div className="px-4 pb-8 pt-20 sm:px-8 lg:pt-8">
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -32,7 +41,10 @@ const AdminLayout = () => {
             <Route path="/admin/orders" element={<Orders />} />
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/categories" element={<Categories />} />
-            <Route path="/admin/shipping-amount" element={<ShippingAmount />}/>
+            <Route
+              path="/admin/shipping-amount"
+              element={<ShippingAmount />}
+            />
           </Routes>
         </div>
       </main>
@@ -46,15 +58,12 @@ const App = () => {
       <Toaster position="top-right" />
 
       <Routes>
-        {/* Login page without sidebar */}
         <Route path="/login" element={<AdminLogin />} />
 
-        {/* Protected admin pages with sidebar */}
         <Route element={<AdminProtectedRoute />}>
           <Route path="/*" element={<AdminLayout />} />
         </Route>
 
-        {/* Fallback */}
         <Route
           path="*"
           element={<Navigate to="/" replace />}

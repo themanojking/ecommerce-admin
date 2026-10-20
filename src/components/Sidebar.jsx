@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import AOS from "aos";
@@ -12,6 +13,7 @@ import {
   FiMenu,
   FiLogOut,
   FiChevronRight,
+  FiChevronLeft,
   FiShoppingBag,
   FiMail,
   FiTruck,
@@ -40,14 +42,12 @@ const getAdminUser = () => {
   }
 };
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed, setCollapsed }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
   const admin = getAdminUser();
-
   const adminName = admin.name || admin.username || "Admin";
-
   const adminEmail = admin.useremail || admin.email || "";
 
   const avatarLetter = (
@@ -65,15 +65,13 @@ export default function Sidebar() {
     });
   }, []);
 
-  // On mobile the drawer starts off-screen, so AOS must re-scan when it opens
-  // or the menu items would stay hidden.
   useEffect(() => {
     if (!mobileOpen) return undefined;
+
     const t = setTimeout(() => AOS.refreshHard(), 60);
     return () => clearTimeout(t);
   }, [mobileOpen]);
 
-  // Close the drawer with Escape and lock page scroll while it is open
   useEffect(() => {
     if (!mobileOpen) return undefined;
 
@@ -100,6 +98,10 @@ export default function Sidebar() {
     navigate("/login", { replace: true });
   };
 
+  const toggleSidebar = () => {
+    setCollapsed((prev) => !prev);
+  };
+
   return (
     <>
       <style>{`
@@ -107,19 +109,33 @@ export default function Sidebar() {
           0% { transform: scale(1); opacity: 0.6; }
           100% { transform: scale(2.6); opacity: 0; }
         }
+
         @keyframes sbFloat {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-3px); }
         }
+
         @keyframes sbOverlay {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        .sb-ping { animation: sbPing 1.8s ease-out infinite; }
-        .sb-float { animation: sbFloat 3.5s ease-in-out infinite; }
-        .sb-overlay { animation: sbOverlay 0.25s ease-out; }
+
+        .sb-ping {
+          animation: sbPing 1.8s ease-out infinite;
+        }
+
+        .sb-float {
+          animation: sbFloat 3.5s ease-in-out infinite;
+        }
+
+        .sb-overlay {
+          animation: sbOverlay 0.25s ease-out;
+        }
+
         @media (prefers-reduced-motion: reduce) {
-          .sb-ping, .sb-float, .sb-overlay { animation: none; }
+          .sb-ping, .sb-float, .sb-overlay {
+            animation: none;
+          }
         }
       `}</style>
 
@@ -146,7 +162,9 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-3 left-3 z-50 flex w-60 flex-col overflow-hidden rounded-2xl border border-indigo-100 bg-white text-slate-700 shadow-xl transition-transform duration-300 ease-out lg:translate-x-0 lg:shadow-lg ${
+        className={`fixed inset-y-3 left-3 z-50 flex ${
+          collapsed ? "w-20" : "w-60"
+        } flex-col overflow-hidden rounded-2xl border border-indigo-100 bg-white text-slate-700 shadow-xl transition-all duration-300 ease-out lg:translate-x-0 lg:shadow-lg ${
           mobileOpen ? "translate-x-0" : "-translate-x-[110%]"
         }`}
       >
@@ -154,29 +172,57 @@ export default function Sidebar() {
         <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-indigo-200/40 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 -left-10 h-32 w-32 rounded-full bg-violet-200/40 blur-2xl" />
 
-        {/* Brand */}
+        {/* Brand header */}
         <div
           data-aos="fade-down"
-          className="relative flex h-20 items-center justify-between border-b border-slate-100 px-4"
+          className={`relative flex h-20 shrink-0 items-center border-b border-slate-100 ${
+            collapsed ? "justify-center px-2" : "justify-between px-4"
+          }`}
         >
-          <div className="flex items-center gap-2.5">
-            <div className="sb-float flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-200">
+          <div
+            className={`flex min-w-0 items-center ${
+              collapsed ? "justify-center" : "gap-2.5"
+            }`}
+          >
+            <div
+              title="Admin Panel"
+              className="sb-float flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-200"
+            >
               <FiShoppingBag size={20} />
             </div>
 
-            <div>
-              <h1 className="text-base font-extrabold leading-tight tracking-tight text-slate-800">
-                Admin
-                <span className="text-indigo-600">Panel</span>
-              </h1>
+            {!collapsed && (
+              <div className="min-w-0">
+                <h1 className="whitespace-nowrap text-base font-extrabold leading-tight tracking-tight text-slate-800">
+                  Admin<span className="text-indigo-600">Panel</span>
+                </h1>
 
-              <p className="flex items-center gap-1 text-[11px] text-slate-400">
-                <FiShield size={10} />
-                Store management
-              </p>
-            </div>
+                <p className="flex items-center gap-1 whitespace-nowrap text-[11px] text-slate-400">
+                  <FiShield size={10} />
+                  Store management
+                </p>
+              </div>
+            )}
           </div>
 
+          {/* Desktop collapse / expand button */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={`hidden rounded-lg p-2 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 lg:block ${
+              collapsed ? "absolute -right-1 bottom-1" : "ml-1"
+            }`}
+          >
+            {collapsed ? (
+              <FiChevronRight size={18} />
+            ) : (
+              <FiChevronLeft size={18} />
+            )}
+          </button>
+
+          {/* Mobile close button */}
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
@@ -188,13 +234,19 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="relative flex-1 space-y-1.5 overflow-y-auto px-3 py-6">
-          <p
-            data-aos="fade-right"
-            className="mb-3 px-3 text-[11px] font-bold uppercase tracking-widest text-slate-400"
-          >
-            Main Menu
-          </p>
+        <nav
+          className={`relative flex-1 space-y-1.5 overflow-y-auto py-6 ${
+            collapsed ? "px-2" : "px-3"
+          }`}
+        >
+          {!collapsed && (
+            <p
+              data-aos="fade-right"
+              className="mb-3 px-3 text-[11px] font-bold uppercase tracking-widest text-slate-400"
+            >
+              Main Menu
+            </p>
+          )}
 
           {menuItems.map((item, index) => {
             const Icon = item.icon;
@@ -209,8 +261,13 @@ export default function Sidebar() {
                   to={item.path}
                   end={item.path === "/"}
                   onClick={() => setMobileOpen(false)}
+                  title={collapsed ? item.name : undefined}
                   className={({ isActive }) =>
-                    `group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 ${
+                    `group relative flex items-center overflow-hidden rounded-xl py-2.5 text-sm font-semibold transition-all duration-300 ${
+                      collapsed
+                        ? "justify-center px-2"
+                        : "gap-3 px-3"
+                    } ${
                       isActive
                         ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100"
                         : "text-slate-500 hover:translate-x-1 hover:bg-violet-50 hover:text-violet-700"
@@ -219,13 +276,16 @@ export default function Sidebar() {
                 >
                   {({ isActive }) => (
                     <>
-                      {/* Active indicator bar */}
+                      {/* Active indicator */}
                       <span
                         className={`absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-indigo-500 to-violet-500 transition-all duration-300 ${
-                          isActive ? "h-6 opacity-100" : "h-0 opacity-0"
+                          isActive
+                            ? "h-6 opacity-100"
+                            : "h-0 opacity-0"
                         }`}
                       />
 
+                      {/* Menu icon */}
                       <span
                         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ${
                           isActive
@@ -236,16 +296,24 @@ export default function Sidebar() {
                         <Icon size={18} />
                       </span>
 
-                      <span className="flex-1">{item.name}</span>
+                      {/* Menu label */}
+                      {!collapsed && (
+                        <span className="flex-1 whitespace-nowrap">
+                          {item.name}
+                        </span>
+                      )}
 
-                      <FiChevronRight
-                        size={15}
-                        className={`transition-all duration-300 ${
-                          isActive
-                            ? "text-indigo-500"
-                            : "text-slate-300 group-hover:translate-x-1 group-hover:text-violet-500"
-                        }`}
-                      />
+                      {/* Active navigation arrow */}
+                      {!collapsed && (
+                        <FiChevronRight
+                          size={15}
+                          className={`shrink-0 transition-all duration-300 ${
+                            isActive
+                              ? "text-indigo-500"
+                              : "text-slate-300 group-hover:translate-x-1 group-hover:text-violet-500"
+                          }`}
+                        />
+                      )}
                     </>
                   )}
                 </NavLink>
@@ -254,46 +322,64 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Admin profile */}
+        {/* Admin profile and logout */}
         <div
           data-aos="fade-up"
           data-aos-delay="200"
-          className="relative border-t border-slate-100 p-3"
+          className={`relative shrink-0 border-t border-slate-100 ${
+            collapsed ? "p-2" : "p-3"
+          }`}
         >
-          <div className="mb-2.5 rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-3 transition hover:shadow-md">
-            <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Logged in as
-            </p>
-
-            <div className="flex min-w-0 items-center gap-2.5">
+          {/* Profile card */}
+          <div
+            title={collapsed ? `${adminName} ${adminEmail}` : undefined}
+            className={`mb-2.5 rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 transition hover:shadow-md ${
+              collapsed ? "flex justify-center p-2" : "p-3"
+            }`}
+          >
+            <div
+              className={`flex min-w-0 items-center ${
+                collapsed ? "justify-center" : "gap-2.5"
+              }`}
+            >
               {/* Avatar */}
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-base font-bold text-white shadow-md shadow-indigo-200">
                 {avatarLetter}
               </div>
 
               {/* Admin name and email */}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-slate-800">
-                  {adminName}
-                </p>
-
-                <div className="mt-0.5 flex min-w-0 items-center gap-1 text-slate-500">
-                  <FiMail size={12} className="shrink-0 text-indigo-500" />
-
-                  <p className="truncate text-[11px]" title={adminEmail}>
-                    {adminEmail || "Email not available"}
+              {!collapsed && (
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-slate-800">
+                    {adminName}
                   </p>
+
+                  <div className="mt-0.5 flex min-w-0 items-center gap-1 text-slate-500">
+                    <FiMail
+                      size={12}
+                      className="shrink-0 text-indigo-500"
+                    />
+
+                    <p
+                      className="truncate text-[11px]"
+                      title={adminEmail}
+                    >
+                      {adminEmail || "Email not available"}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Online indicator */}
-              <span
-                className="relative flex h-2.5 w-2.5 shrink-0"
-                title="Logged in"
-              >
-                <span className="sb-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              </span>
+              {!collapsed && (
+                <span
+                  className="relative flex h-2.5 w-2.5 shrink-0"
+                  title="Logged in"
+                >
+                  <span className="sb-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+              )}
             </div>
           </div>
 
@@ -301,16 +387,19 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={handleLogout}
-            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 active:scale-[0.98]"
+            title={collapsed ? "Logout" : undefined}
+            className={`group flex w-full items-center rounded-xl py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 active:scale-[0.98] ${
+              collapsed ? "justify-center px-2" : "gap-3 px-3"
+            }`}
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 transition group-hover:bg-rose-100">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 transition group-hover:bg-rose-100">
               <FiLogOut
                 size={18}
                 className="transition-transform duration-300 group-hover:translate-x-0.5"
               />
             </span>
 
-            Logout
+            {!collapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
