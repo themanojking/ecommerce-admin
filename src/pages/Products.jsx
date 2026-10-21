@@ -45,6 +45,7 @@ const Products = () => {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(initialForm);
+  const [selectedImages, setSelectedImages] = useState([]);
 
   useEffect(() => {
     AOS.init({
@@ -112,7 +113,8 @@ const Products = () => {
   // Open empty form for adding a product
   const openAddForm = () => {
     setEditingId(null);
-    setForm({ ...initialForm, images: [""] });
+    setForm({ ...initialForm, images: [] });
+    setSelectedImages([]);
     setFormOpen(true);
   };
 
@@ -120,7 +122,8 @@ const Products = () => {
   const resetForm = () => {
     setFormOpen(false);
     setEditingId(null);
-    setForm({ ...initialForm, images: [""] });
+    setForm({ ...initialForm, images: [] });
+    setSelectedImages([]);
   };
 
   // Update form fields
@@ -133,29 +136,56 @@ const Products = () => {
     }));
   };
 
-  // Update image URL
-  const handleImageChange = (index, value) => {
-    setForm((prev) => {
-      const images = [...prev.images];
-      images[index] = value;
-      return { ...prev, images };
+  // Read selected local image files and create previews. No Cloudinary is used.
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+      reader.readAsDataURL(file);
     });
+
+  const handleImageFiles = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image`);
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds the 5 MB limit`);
+        return false;
+      }
+      return true;
+    });
+
+    setSelectedImages((previous) => [
+      ...previous,
+      ...validFiles.map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+        id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+      })),
+    ]);
+    // Allow choosing the same file again after removing it.
+    event.target.value = "";
   };
 
-  // Add another image URL input
-  const addImageField = () => {
-    setForm((prev) => ({ ...prev, images: [...prev.images, ""] }));
-  };
-
-  // Remove image URL input
-  const removeImageField = (index) => {
-    setForm((prev) => ({
-      ...prev,
-      images:
-        prev.images.length > 1
-          ? prev.images.filter((_, i) => i !== index)
-          : [""],
+  const removeExistingImage = (index) => {
+    setForm((previous) => ({
+      ...previous,
+      images: previous.images.filter((_, imageIndex) => imageIndex !== index),
     }));
+  };
+
+  const removeSelectedImage = (id) => {
+    setSelectedImages((previous) => {
+      const imageToRemove = previous.find((item) => item.id === id);
+      if (imageToRemove) URL.revokeObjectURL(imageToRemove.preview);
+      return previous.filter((item) => item.id !== id);
+    });
   };
 
   // Open popup with product data for editing
@@ -171,12 +201,13 @@ const Products = () => {
         Array.isArray(product.images) && product.images.length > 0
           ? product.images.map((image) =>
               typeof image === "string" ? image : image?.url || ""
-            )
-          : [""],
+            ).filter(Boolean)
+          : [],
       stock: product.stock ?? 0,
       isAvailable: product.isAvailable ?? true,
     });
 
+    setSelectedImages([]);
     setFormOpen(true);
   };
 
@@ -220,7 +251,12 @@ const Products = () => {
       category: form.category.trim(),
       price: Number(form.price),
       stock: Number(form.stock),
-      images: form.images.map((image) => image.trim()).filter(Boolean),
+      // Existing image URLs/data URLs are retained. New local files are converted
+      // to data URLs and saved through the existing product API (no Cloudinary).
+      images: [
+        ...form.images.filter(Boolean),
+        ...(await Promise.all(selectedImages.map(({ file }) => readFileAsDataUrl(file)))),
+      ],
     };
 
     try {
@@ -954,66 +990,65 @@ const Products = () => {
                   </div>
                 </div>
 
-                {/* Images */}
+                {/* Images selected directly from this device */}
                 <div className="sm:col-span-2">
                   <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Product Image URLs
+                    Product Images
+                  </label>
+                  <p className="mb-3 text-xs leading-5 text-slate-500">
+                    Choose one or more image files from your device. JPG, PNG, WEBP and other browser-supported image formats are accepted. Maximum 5 MB per image.
+                  </p>
+
+                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 px-5 py-7 text-center transition hover:border-indigo-400 hover:bg-indigo-50">
+                    <span className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+                      <FiImage size={23} />
+                    </span>
+                    <span className="text-sm font-semibold text-slate-800">Choose images from your device</span>
+                    <span className="mt-1 text-xs text-slate-500">Click to browse files · Multiple selection supported</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageFiles}
+                      className="sr-only"
+                    />
                   </label>
 
-                  <div className="space-y-3">
-                    {form.images.map((image, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-slate-300">
-                          {image.trim() ? (
-                            <img
-                              src={image}
-                              alt=""
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <FiImage size={18} />
-                          )}
-                        </div>
-
-                        <div className="relative min-w-0 flex-1">
-                          <FiImage className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                          <input
-                            type="url"
-                            value={image}
-                            onChange={(event) =>
-                              handleImageChange(index, event.target.value)
-                            }
-                            placeholder="https://example.com/product-image.jpg"
-                            className={inputClass}
-                          />
-                        </div>
-
-                        {form.images.length > 1 && (
+                  {(form.images.length > 0 || selectedImages.length > 0) && (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                      {form.images.map((image, index) => (
+                        <div key={`existing-${index}`} className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white">
+                          <img src={image} alt={`Product ${index + 1}`} className="h-28 w-full object-cover" />
                           <button
                             type="button"
-                            onClick={() => removeImageField(index)}
-                            title="Remove image"
-                            aria-label="Remove image"
-                            className="rounded-xl border border-rose-100 p-3 text-rose-600 transition hover:bg-rose-600 hover:text-white active:scale-90"
+                            onClick={() => removeExistingImage(index)}
+                            aria-label={`Remove existing image ${index + 1}`}
+                            className="absolute right-2 top-2 rounded-full bg-rose-600 p-1.5 text-white shadow transition hover:bg-rose-700"
                           >
-                            <FiX />
+                            <FiX size={14} />
                           </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={addImageField}
-                    className="group mt-3 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800"
-                  >
-                    <FiPlus className="transition-transform duration-300 group-hover:rotate-90" />
-                    Add another image
-                  </button>
+                          <p className="truncate px-2 py-1.5 text-xs text-slate-500">Saved image {index + 1}</p>
+                        </div>
+                      ))}
+                      {selectedImages.map((item, index) => (
+                        <div key={item.id} className="group relative overflow-hidden rounded-xl border border-indigo-200 bg-white">
+                          <img src={item.preview} alt={item.file.name} className="h-28 w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeSelectedImage(item.id)}
+                            aria-label={`Remove ${item.file.name}`}
+                            className="absolute right-2 top-2 rounded-full bg-rose-600 p-1.5 text-white shadow transition hover:bg-rose-700"
+                          >
+                            <FiX size={14} />
+                          </button>
+                          <p className="truncate px-2 py-1.5 text-xs text-slate-500">{item.file.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {selectedImages.length > 0 && (
+                    <p className="mt-2 text-xs text-indigo-600">{selectedImages.length} new image{selectedImages.length === 1 ? "" : "s"} selected</p>
+                  )}
                 </div>
               </div>
 
