@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -16,7 +16,6 @@ import Categories from "./pages/Categories";
 import ShippingAmount from "./pages/ShippingAmount";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import Sidebar from "./components/Sidebar";
-
 import { Toaster } from "react-hot-toast";
 
 const AdminLayout = () => {
@@ -24,10 +23,7 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Sidebar
-        collapsed={collapsed}
-        setCollapsed={setCollapsed}
-      />
+      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
       <main
         className={`min-h-screen transition-all duration-300 ease-in-out ${
@@ -58,16 +54,16 @@ const App = () => {
       <Toaster position="top-right" />
 
       <Routes>
+        {/* Public login page */}
         <Route path="/login" element={<AdminLogin />} />
 
+        {/* Protected admin pages */}
         <Route element={<AdminProtectedRoute />}>
           <Route path="/*" element={<AdminLayout />} />
         </Route>
 
-        <Route
-          path="*"
-          element={<Navigate to="/" replace />}
-        />
+        {/* Unknown paths */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

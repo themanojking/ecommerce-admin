@@ -14,11 +14,15 @@ const AdminProtectedRoute = () => {
     adminUser = null;
   }
 
-  if (!token || adminUser?.role !== "admin") {
-    return <Navigate to="/login" replace />;
-  }
+  const isAdmin = Boolean(
+    token && adminUser?.role === "admin"
+  );
 
-  return <Outlet />;
+  return isAdmin ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/login" replace />
+  );
 };
 
 export default AdminProtectedRoute;
